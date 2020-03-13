@@ -35,6 +35,15 @@
 
 namespace FileUtils {
 
+int delete_file(String path){
+
+    if(unlink(path.characters()) < 0){
+        return errno;
+    }
+    dbgprintf("FileUtils: unlink(%s) succeeded\r\n", path.characters());
+    return 0;
+}
+
 int delete_directory(String directory, String& file_that_caused_error)
 {
     Core::DirIterator iterator(directory, Core::DirIterator::SkipDots);
@@ -70,7 +79,37 @@ int delete_directory(String directory, String& file_that_caused_error)
 
     return 0;
 }
+bool move_file_or_directory(const String& src_path, const String& dst_path){
+    // stat the lcoation so we can detect if this is a directory or a file
+    struct stat st;
 
+    if (lstat(src_path.characters(), &st)) {
+        dbgprintf("FileUtils: move_file_or_directory-> lstat(%s) failed!\r\n", src_path);
+        return false;
+    }
+
+
+
+    if(!copy_file_or_directory(src_path,dst_path)){
+        dbgprintf("FileUtils: move_file_or_directory-> copy_file_or_directory(%s,%s) failed!\r\n", src_path,dst_path);
+        return false;
+    }
+    if(S_ISDIR(st.st_mode)){
+        String error_path;
+        if(delete_directory(src_path,error_path)  < 0){
+            dbgprintf("FileUtils: move_file_or_directory-> delete_directory(%s) failed!\r\n", src_path);
+            dbgprintf("Culprit: %s\r\n", error_path);
+            return false;
+        }
+        dbgprintf("FileUtils: move_file_or_directory-> delete_directory(%s) succeeded!\r\n", src_path);
+        return true;
+    }else if (FileUtils::delete_file(src_path.characters()) < 0) {
+        dbgprintf("FileUtils: move_file_or_directory-> delete_file(%s) failed!\r\n", src_path);
+        return false;
+    }
+    dbgprintf("FileUtils: move_file_or_directory-> delete_file(%s) succeeded!\r\n", src_path);
+    return true;
+}
 bool copy_file_or_directory(const String& src_path, const String& dst_path)
 {
     int duplicate_count = 0;

@@ -398,7 +398,7 @@ int main(int argc, char** argv)
                 } else {
                     refresh_tree_view();
                 }
-            } else if (unlink(path.characters()) < 0) {
+            } else if (FileUtils::delete_file(path.characters()) < 0) {
                 int saved_errno = errno;
                 GUI::MessageBox::show(
                     String::format("unlink(%s) failed: %s", path.characters(), strerror(saved_errno)),
@@ -596,9 +596,10 @@ int main(int argc, char** argv)
             auto new_path = String::format("%s/%s",
                 target_node.full_path(directory_view.model()).characters(),
                 FileSystemPath(url_to_copy.path()).basename().characters());
-
-            if (!FileUtils::copy_file_or_directory(url_to_copy.path(), new_path)) {
-                auto error_message = String::format("Could not copy %s into %s.",
+            // Test replace copy_file_or_directory with move_file_or_directory
+            //if (!FileUtils::copy_file_or_directory(url_to_copy.path(), new_path)) {
+            if (!FileUtils::move_file_or_directory(url_to_copy.path(), new_path)) {
+                auto error_message = String::format("Could not move %s into %s.",
                     url_to_copy.to_string().characters(),
                     new_path.characters());
                 GUI::MessageBox::show(error_message, "File Manager", GUI::MessageBox::Type::Error);
