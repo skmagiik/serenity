@@ -30,13 +30,18 @@
 
 namespace JS {
 
-NativeFunction::NativeFunction(AK::Function<Value(Interpreter&, Vector<Argument>)> native_function)
+NativeFunction::NativeFunction(AK::Function<Value(Interpreter&, Vector<Value>)> native_function)
     : m_native_function(move(native_function))
 {
 }
 
 NativeFunction::~NativeFunction()
 {
+}
+
+Value NativeFunction::call(Interpreter& interpreter, Vector<Value> arguments)
+{
+    return m_native_function(interpreter, move(arguments));
 }
 
 }

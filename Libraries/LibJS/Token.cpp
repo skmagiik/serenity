@@ -25,6 +25,8 @@
  */
 
 #include "Token.h"
+#include <AK/Assertions.h>
+#include <AK/StringBuilder.h>
 
 namespace JS {
 
@@ -37,14 +39,20 @@ const char* Token::name(TokenType type)
         return "AmpersandEquals";
     case TokenType::Asterisk:
         return "Asterisk";
+    case TokenType::AsteriskAsteriskEquals:
+        return "AsteriskAsteriskEquals";
     case TokenType::AsteriskEquals:
         return "AsteriskEquals";
+    case TokenType::Await:
+        return "Await";
     case TokenType::BoolLiteral:
         return "BoolLiteral";
     case TokenType::BracketOpen:
         return "BracketOpen";
     case TokenType::BracketClose:
         return "BracketClose";
+    case TokenType::Caret:
+        return "Caret";
     case TokenType::Catch:
         return "Catch";
     case TokenType::Class:
@@ -63,8 +71,12 @@ const char* Token::name(TokenType type)
         return "Do";
     case TokenType::DoubleAmpersand:
         return "DoubleAmpersand";
+    case TokenType::DoubleAsterisk:
+        return "DoubleAsterisk";
     case TokenType::DoublePipe:
         return "DoublePipe";
+    case TokenType::DoubleQuestionMark:
+        return "DoubleQuestionMark";
     case TokenType::Else:
         return "Else";
     case TokenType::Eof:
@@ -73,26 +85,40 @@ const char* Token::name(TokenType type)
         return "Equals";
     case TokenType::EqualsEquals:
         return "EqualsEquals";
+    case TokenType::EqualsEqualsEquals:
+        return "EqualsEqualsEquals";
     case TokenType::ExclamationMark:
         return "ExclamationMark";
     case TokenType::ExclamationMarkEquals:
         return "ExclamationMarkEquals";
+    case TokenType::ExclamationMarkEqualsEquals:
+        return "ExclamationMarkEqualsEquals";
     case TokenType::Finally:
         return "Finally";
+    case TokenType::For:
+        return "For";
     case TokenType::Function:
         return "Function";
     case TokenType::GreaterThan:
         return "GreaterThan";
+    case TokenType::GreaterThanEquals:
+        return "GreaterThanEquals";
     case TokenType::Identifier:
         return "Identifier";
     case TokenType::If:
         return "If";
+    case TokenType::In:
+        return "In";
+    case TokenType::Instanceof:
+        return "Instanceof";
     case TokenType::Interface:
         return "Interface";
     case TokenType::Invalid:
         return "Invalid";
     case TokenType::LessThan:
         return "LessThan";
+    case TokenType::LessThanEquals:
+        return "LessThanEquals";
     case TokenType::Let:
         return "Let";
     case TokenType::Minus:
@@ -129,6 +155,8 @@ const char* Token::name(TokenType type)
         return "PlusPlus";
     case TokenType::QuestionMark:
         return "QuestionMark";
+    case TokenType::QuestionMarkPeriod:
+        return "QuestionMarkPeriod";
     case TokenType::RegexLiteral:
         return "RegexLiteral";
     case TokenType::Return:
@@ -137,21 +165,40 @@ const char* Token::name(TokenType type)
         return "Semicolon";
     case TokenType::ShiftLeft:
         return "ShiftLeft";
+    case TokenType::ShiftLeftEquals:
+        return "ShiftLeftEquals";
     case TokenType::ShiftRight:
         return "ShiftRight";
+    case TokenType::ShiftRightEquals:
+        return "ShiftRightEquals";
     case TokenType::Slash:
         return "Slash";
     case TokenType::SlashEquals:
         return "SlashEquals";
     case TokenType::StringLiteral:
         return "StringLiteral";
+    case TokenType::Tilde:
+        return "Tilde";
     case TokenType::Try:
         return "Try";
+    case TokenType::Typeof:
+        return "Typeof";
+    case TokenType::UnsignedShiftRight:
+        return "UnsignedShiftRight";
+    case TokenType::UnsignedShiftRightEquals:
+        return "UnsignedShiftRightEquals";
+    case TokenType::UnterminatedStringLiteral:
+        return "UnterminatedStringLiteral";
     case TokenType::Var:
         return "Var";
+    case TokenType::Void:
+        return "Void";
     case TokenType::While:
         return "While";
+    case TokenType::Yield:
+        return "Yield";
     default:
+        ASSERT_NOT_REACHED();
         return "<Unknown>";
     }
 }
@@ -163,6 +210,7 @@ const char* Token::name() const
 
 double Token::double_value() const
 {
+    ASSERT(type() == TokenType::NumericLiteral);
     // FIXME: need to parse double instead of int
     bool ok;
     return m_value.to_int(ok);
@@ -170,12 +218,58 @@ double Token::double_value() const
 
 String Token::string_value() const
 {
-    // FIXME: unescape the string and remove quotes
-    return m_value;
+    ASSERT(type() == TokenType::StringLiteral);
+    StringBuilder builder;
+    for (size_t i = 1; i < m_value.length() - 1; ++i) {
+        if (m_value[i] == '\\' && i + 1 < m_value.length() - 1) {
+            i++;
+            switch (m_value[i]) {
+            case 'b':
+                builder.append('\b');
+                break;
+            case 'f':
+                builder.append('\f');
+                break;
+            case 'n':
+                builder.append('\n');
+                break;
+            case 'r':
+                builder.append('\r');
+                break;
+            case 't':
+                builder.append('\t');
+                break;
+            case 'v':
+                builder.append('\v');
+                break;
+            case '0':
+                builder.append((char)0);
+                break;
+            case '\'':
+                builder.append('\'');
+                break;
+            case '"':
+                builder.append('"');
+                break;
+            case '\\':
+                builder.append('\\');
+                break;
+            default:
+                // FIXME: Also parse octal, hex and unicode sequences
+                // should anything else generate a syntax error?
+                builder.append(m_value[i]);
+            }
+
+        } else {
+            builder.append(m_value[i]);
+        }
+    }
+    return builder.to_string();
 }
 
 bool Token::bool_value() const
 {
+    ASSERT(type() == TokenType::BoolLiteral);
     return m_value == "true";
 }
 

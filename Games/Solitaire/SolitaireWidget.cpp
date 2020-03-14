@@ -103,7 +103,7 @@ void SolitaireWidget::create_new_animation_card()
     card->set_position({ rand() % (SolitaireWidget::width - Card::width), rand() % (SolitaireWidget::height / 8) });
 
     int x_sgn = card->position().x() > (SolitaireWidget::width / 2) ? -1 : 1;
-    m_animation = Animation(card, rand_float() + .4, x_sgn * ((rand() % 3) + 3), .4 + rand_float() * .6);
+    m_animation = Animation(card, rand_float() + .4, x_sgn * ((rand() % 3) + 2), .6 + rand_float() * .4);
 }
 
 void SolitaireWidget::start_game_over_animation()
@@ -312,12 +312,9 @@ void SolitaireWidget::doubleclick_event(GUI::MouseEvent& event)
         return;
     }
 
-    if (!m_focused_cards.is_empty())
-        return;
-
     auto click_location = event.position();
     for (auto& to_check : m_stacks) {
-        if (to_check.type() == CardStack::Type::Foundation)
+        if (to_check.type() == CardStack::Type::Foundation || to_check.type() == CardStack::Type::Stock)
             continue;
 
         if (to_check.bounding_box().contains(click_location) && !to_check.is_empty()) {
@@ -360,6 +357,7 @@ void SolitaireWidget::move_card(CardStack& from, CardStack& to)
     auto card = from.pop();
 
     card->set_moving(true);
+    m_focused_cards.clear();
     m_focused_cards.append(card);
     mark_intersecting_stacks_dirty(card);
     to.push(card);

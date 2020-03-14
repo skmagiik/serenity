@@ -33,6 +33,7 @@
 #include <AK/URL.h>
 #include <AK/WeakPtr.h>
 #include <LibCore/Forward.h>
+#include <LibJS/Forward.h>
 #include <LibWeb/CSS/StyleResolver.h>
 #include <LibWeb/CSS/StyleSheet.h>
 #include <LibWeb/DOM/ParentNode.h>
@@ -50,6 +51,8 @@ class StyleSheet;
 
 class Document : public ParentNode {
 public:
+    using WrapperType = Bindings::DocumentWrapper;
+
     Document();
     virtual ~Document() override;
 
@@ -120,6 +123,8 @@ public:
     const String& source() const { return m_source; }
     void set_source(const String& source) { m_source = source; }
 
+    JS::Interpreter& interpreter();
+
 private:
     virtual RefPtr<LayoutNode> create_layout_node(const StyleProperties* parent_style) const override;
 
@@ -139,6 +144,8 @@ private:
     RefPtr<Core::Timer> m_style_update_timer;
 
     String m_source;
+
+    OwnPtr<JS::Interpreter> m_interpreter;
 };
 
 template<>

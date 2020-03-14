@@ -27,10 +27,9 @@
 #include <AK/HashMap.h>
 #include <AK/StringBuilder.h>
 #include <LibJS/AST.h>
-#include <LibJS/Function.h>
 #include <LibJS/Interpreter.h>
-#include <LibJS/NativeFunction.h>
 #include <LibJS/PrimitiveString.h>
+#include <LibJS/ScriptFunction.h>
 #include <LibJS/Value.h>
 #include <stdio.h>
 
@@ -43,7 +42,7 @@ Value ScopeNode::execute(Interpreter& interpreter) const
 
 Value FunctionDeclaration::execute(Interpreter& interpreter) const
 {
-    auto* function = interpreter.heap().allocate<Function>(name(), body(), parameters());
+    auto* function = interpreter.heap().allocate<ScriptFunction>(body(), parameters());
     interpreter.set_variable(m_name, function);
     return function;
 }
@@ -55,28 +54,16 @@ Value ExpressionStatement::execute(Interpreter& interpreter) const
 
 Value CallExpression::execute(Interpreter& interpreter) const
 {
-    auto callee = interpreter.get_variable(name());
+    auto callee = m_callee->execute(interpreter);
     ASSERT(callee.is_object());
-    auto* callee_object = callee.as_object();
+    ASSERT(callee.as_object()->is_function());
+    auto* function = static_cast<Function*>(callee.as_object());
 
-    Vector<Argument> passed_arguments;
-    for (size_t i = 0; i < m_arguments.size(); ++i) {
-        String name;
-        if (callee_object->is_function())
-            name = static_cast<Function&>(*callee_object).parameters()[i];
-        auto value = m_arguments[i].execute(interpreter);
-        dbg() << name << ": " << value;
-        passed_arguments.append({ move(name), move(value) });
-    }
+    Vector<Value> argument_values;
+    for (size_t i = 0; i < m_arguments.size(); ++i)
+        argument_values.append(m_arguments[i].execute(interpreter));
 
-    if (callee_object->is_function())
-        return interpreter.run(static_cast<Function&>(*callee_object).body(), move(passed_arguments), ScopeType::Function);
-
-    if (callee_object->is_native_function()) {
-        return static_cast<NativeFunction&>(*callee_object).native_function()(interpreter, move(passed_arguments));
-    }
-
-    ASSERT_NOT_REACHED();
+    return function->call(interpreter, move(argument_values));
 }
 
 Value ReturnStatement::execute(Interpreter& interpreter) const
@@ -108,6 +95,13 @@ Value WhileStatement::execute(Interpreter& interpreter) const
 
 Value ForStatement::execute(Interpreter& interpreter) const
 {
+    OwnPtr<BlockStatement> wrapper;
+
+    if (m_init->is_variable_declaration() && static_cast<const VariableDeclaration*>(m_init.ptr())->declaration_type() != DeclarationType::Var) {
+        wrapper = make<BlockStatement>();
+        interpreter.enter_scope(*wrapper, {}, ScopeType::Block);
+    }
+
     Value last_value = js_undefined();
 
     if (m_init)
@@ -126,6 +120,9 @@ Value ForStatement::execute(Interpreter& interpreter) const
                 m_update->execute(interpreter);
         }
     }
+
+    if (wrapper)
+        interpreter.exit_scope(*wrapper);
 
     return last_value;
 }
@@ -189,7 +186,7 @@ Value UnaryExpression::execute(Interpreter& interpreter) const
 {
     auto lhs_result = m_lhs->execute(interpreter);
     switch (m_op) {
-    case UnaryOp::BitNot:
+    case UnaryOp::BitwiseNot:
         return bitwise_not(lhs_result);
     case UnaryOp::Not:
         return Value(!lhs_result.to_boolean());
@@ -300,7 +297,7 @@ void UnaryExpression::dump(int indent) const
 {
     const char* op_string = nullptr;
     switch (m_op) {
-    case UnaryOp::BitNot:
+    case UnaryOp::BitwiseNot:
         op_string = "~";
         break;
     case UnaryOp::Not:
@@ -317,9 +314,8 @@ void UnaryExpression::dump(int indent) const
 
 void CallExpression::dump(int indent) const
 {
-    print_indent(indent);
-    printf("%s '%s'\n", class_name(), name().characters());
-
+    ASTNode::dump(indent);
+    m_callee->dump(indent + 1);
     for (auto& argument : m_arguments)
         argument.dump(indent + 1);
 }
@@ -454,14 +450,20 @@ Value UpdateExpression::execute(Interpreter& interpreter) const
     auto previous_value = interpreter.get_variable(name);
     ASSERT(previous_value.is_number());
 
+    int op_result = 0;
     switch (m_op) {
     case UpdateOp::Increment:
-        interpreter.set_variable(name, Value(previous_value.as_double() + 1));
+        op_result = 1;
         break;
     case UpdateOp::Decrement:
-        interpreter.set_variable(name, Value(previous_value.as_double() - 1));
+        op_result = -1;
         break;
     }
+
+    interpreter.set_variable(name, Value(previous_value.as_double() + op_result));
+
+    if (m_prefixed)
+        return JS::Value(previous_value.as_double() + op_result);
 
     return previous_value;
 }
@@ -508,8 +510,13 @@ void UpdateExpression::dump(int indent) const
 
     ASTNode::dump(indent);
     print_indent(indent + 1);
-    printf("%s\n", op_string);
+    if (m_prefixed)
+        printf("%s\n", op_string);
     m_argument->dump(indent + 1);
+    if (!m_prefixed) {
+        print_indent(indent + 1);
+        printf("%s\n", op_string);
+    }
 }
 
 Value VariableDeclaration::execute(Interpreter& interpreter) const

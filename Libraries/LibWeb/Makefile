@@ -1,4 +1,7 @@
 LIBWEB_OBJS = \
+    Bindings/Wrappable.o \
+    Bindings/NodeWrapper.o \
+    Bindings/DocumentWrapper.o \
     CSS/DefaultStyleSheetSource.o \
     CSS/PropertyID.o \
     CSS/Selector.o \
@@ -29,6 +32,7 @@ LIBWEB_OBJS = \
     DOM/HTMLImageElement.o \
     DOM/HTMLInputElement.o \
     DOM/HTMLLinkElement.o \
+    DOM/HTMLScriptElement.o \
     DOM/HTMLStyleElement.o \
     DOM/HTMLTitleElement.o \
     DOM/Node.o \

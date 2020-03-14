@@ -39,8 +39,13 @@ I'm also on [Patreon](https://www.patreon.com/serenityos) and [GitHub Sponsors](
 
 * Launch/session daemon (SystemServer)
 * Compositing window server (WindowServer)
+* Text console manager (TTYServer)
 * DNS client (LookupServer)
+* Network protocols server (ProtocolServer)
 * Software-mixing sound daemon (AudioServer)
+* Desktop notifications (NotificationServer)
+* HTTP server (WebServer)
+* Telnet server (TelnetServer)
 
 ## Libraries
 
@@ -50,11 +55,16 @@ I'm also on [Patreon](https://www.patreon.com/serenityos) and [GitHub Sponsors](
 * GUI toolkit (LibGUI)
 * Cross-process communication library (LibIPC)
 * HTML/CSS engine (LibWeb)
+* JavaScript engine (LibJS)
 * Markdown (LibMarkdown)
 * Audio (LibAudio)
 * PCI database (LibPCIDB)
 * Terminal emulation (LibVT)
 * Network protocols (HTTP) (LibProtocol)
+* Mathematical functions (LibM)
+* ELF file handing (LibELF)
+* POSIX threading (LibPthread)
+* Higher-level threading (LibThread)
 
 ## Userland features
 

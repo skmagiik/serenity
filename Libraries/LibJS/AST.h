@@ -50,6 +50,8 @@ private:
 };
 
 class Statement : public ASTNode {
+public:
+    virtual bool is_variable_declaration() const { return false; }
 };
 
 class ErrorStatement final : public Statement {
@@ -302,7 +304,7 @@ private:
 };
 
 enum class UnaryOp {
-    BitNot,
+    BitwiseNot,
     Not,
 };
 
@@ -398,8 +400,8 @@ private:
 
 class CallExpression : public Expression {
 public:
-    explicit CallExpression(String name, NonnullOwnPtrVector<Expression> arguments = {})
-        : m_name(move(name))
+    explicit CallExpression(NonnullOwnPtr<Expression> callee, NonnullOwnPtrVector<Expression> arguments = {})
+        : m_callee(move(callee))
         , m_arguments(move(arguments))
     {
     }
@@ -407,12 +409,10 @@ public:
     virtual Value execute(Interpreter&) const override;
     virtual void dump(int indent) const override;
 
-    const String& name() const { return m_name; }
-
 private:
     virtual const char* class_name() const override { return "CallExpression"; }
 
-    String m_name;
+    NonnullOwnPtr<Expression> m_callee;
     const NonnullOwnPtrVector<Expression> m_arguments;
 };
 
@@ -451,9 +451,10 @@ enum class UpdateOp {
 
 class UpdateExpression : public Expression {
 public:
-    UpdateExpression(UpdateOp op, NonnullOwnPtr<Expression> argument)
+    UpdateExpression(UpdateOp op, NonnullOwnPtr<Expression> argument, bool prefixed = false)
         : m_op(op)
         , m_argument(move(argument))
+        , m_prefixed(prefixed)
     {
     }
 
@@ -465,6 +466,7 @@ private:
 
     UpdateOp m_op;
     NonnullOwnPtr<Identifier> m_argument;
+    bool m_prefixed;
 };
 
 enum class DeclarationType {
@@ -482,7 +484,9 @@ public:
     {
     }
 
+    virtual bool is_variable_declaration() const override { return true; }
     const Identifier& name() const { return *m_name; }
+    DeclarationType declaration_type() const { return m_declaration_type; }
 
     virtual Value execute(Interpreter&) const override;
     virtual void dump(int indent) const override;

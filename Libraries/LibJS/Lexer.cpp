@@ -42,31 +42,41 @@ Lexer::Lexer(StringView source)
     , m_current_token(TokenType::Eof, StringView(nullptr), StringView(nullptr))
 {
     if (s_keywords.is_empty()) {
-        s_keywords.set("true", TokenType::BoolLiteral);
-        s_keywords.set("false", TokenType::BoolLiteral);
+        s_keywords.set("await", TokenType::Await);
         s_keywords.set("catch", TokenType::Catch);
         s_keywords.set("class", TokenType::Class);
         s_keywords.set("const", TokenType::Const);
         s_keywords.set("delete", TokenType::Delete);
         s_keywords.set("do", TokenType::Do);
         s_keywords.set("else", TokenType::Else);
+        s_keywords.set("false", TokenType::BoolLiteral);
         s_keywords.set("finally", TokenType::Finally);
         s_keywords.set("for", TokenType::For);
         s_keywords.set("function", TokenType::Function);
         s_keywords.set("if", TokenType::If);
+        s_keywords.set("in", TokenType::In);
+        s_keywords.set("instanceof", TokenType::Instanceof);
         s_keywords.set("interface", TokenType::Interface);
         s_keywords.set("let", TokenType::Let);
         s_keywords.set("new", TokenType::New);
         s_keywords.set("null", TokenType::NullLiteral);
         s_keywords.set("return", TokenType::Return);
+        s_keywords.set("true", TokenType::BoolLiteral);
         s_keywords.set("try", TokenType::Try);
+        s_keywords.set("typeof", TokenType::Typeof);
         s_keywords.set("var", TokenType::Var);
+        s_keywords.set("void", TokenType::Void);
         s_keywords.set("while", TokenType::While);
+        s_keywords.set("yield", TokenType::Yield);
     }
 
     if (s_three_char_tokens.is_empty()) {
         s_three_char_tokens.set("===", TokenType::EqualsEqualsEquals);
         s_three_char_tokens.set("!==", TokenType::ExclamationMarkEqualsEquals);
+        s_three_char_tokens.set("**=", TokenType::AsteriskAsteriskEquals);
+        s_three_char_tokens.set("<<=", TokenType::ShiftLeftEquals);
+        s_three_char_tokens.set(">>=", TokenType::ShiftRightEquals);
+        s_three_char_tokens.set(">>>", TokenType::UnsignedShiftRight);
     }
 
     if (s_two_char_tokens.is_empty()) {
@@ -79,12 +89,15 @@ Lexer::Lexer(StringView source)
         s_two_char_tokens.set("|=", TokenType::PipeEquals);
         s_two_char_tokens.set("&&", TokenType::DoubleAmpersand);
         s_two_char_tokens.set("||", TokenType::DoublePipe);
+        s_two_char_tokens.set("??", TokenType::DoubleQuestionMark);
+        s_two_char_tokens.set("**", TokenType::DoubleAsterisk);
         s_two_char_tokens.set("==", TokenType::EqualsEquals);
         s_two_char_tokens.set("!=", TokenType::ExclamationMarkEquals);
         s_two_char_tokens.set("--", TokenType::MinusMinus);
         s_two_char_tokens.set("++", TokenType::PlusPlus);
         s_two_char_tokens.set("<<", TokenType::ShiftLeft);
         s_two_char_tokens.set(">>", TokenType::ShiftRight);
+        s_two_char_tokens.set("?.", TokenType::QuestionMarkPeriod);
     }
 
     if (s_single_char_tokens.is_empty()) {
@@ -92,6 +105,7 @@ Lexer::Lexer(StringView source)
         s_single_char_tokens.set('*', TokenType::Asterisk);
         s_single_char_tokens.set('[', TokenType::BracketOpen);
         s_single_char_tokens.set(']', TokenType::BracketClose);
+        s_single_char_tokens.set('^', TokenType::Caret);
         s_single_char_tokens.set(',', TokenType::Comma);
         s_single_char_tokens.set('{', TokenType::CurlyOpen);
         s_single_char_tokens.set('}', TokenType::CurlyClose);
@@ -107,6 +121,7 @@ Lexer::Lexer(StringView source)
         s_single_char_tokens.set('?', TokenType::QuestionMark);
         s_single_char_tokens.set(';', TokenType::Semicolon);
         s_single_char_tokens.set('/', TokenType::Slash);
+        s_single_char_tokens.set('~', TokenType::Tilde);
         s_single_char_tokens.set('<', TokenType::LessThan);
         s_single_char_tokens.set('>', TokenType::GreaterThan);
     }
@@ -115,7 +130,8 @@ Lexer::Lexer(StringView source)
 
 void Lexer::consume()
 {
-    if (is_eof()) {
+    if (m_position >= m_source.length()) {
+        m_position = m_source.length() + 1;
         m_current_char = EOF;
         return;
     }
@@ -125,7 +141,7 @@ void Lexer::consume()
 
 bool Lexer::is_eof() const
 {
-    return m_position >= m_source.length();
+    return m_current_char == EOF;
 }
 
 bool Lexer::is_identifier_start() const
@@ -153,16 +169,22 @@ bool Lexer::is_block_comment_end() const
     return m_current_char == '*' && m_position < m_source.length() && m_source[m_position] == '/';
 }
 
+void Lexer::syntax_error(const char* msg)
+{
+    m_has_errors = true;
+    fprintf(stderr, "Syntax Error: %s\n", msg);
+}
+
 Token Lexer::next()
 {
     size_t trivia_start = m_position;
 
-    // consume up whitespace and comments
+    // consume whitespace and comments
     while (true) {
         if (isspace(m_current_char)) {
             do {
                 consume();
-            } while (!is_eof() && isspace(m_current_char));
+            } while (isspace(m_current_char));
         } else if (is_line_comment_start()) {
             consume();
             do {
@@ -202,18 +224,44 @@ Token Lexer::next()
             consume();
         }
         token_type = TokenType::NumericLiteral;
-    } else if (m_current_char == '"') {
+    } else if (m_current_char == '"' || m_current_char == '\'') {
+        char stop_char = m_current_char;
         consume();
-        while (m_current_char != '"') {
+        while (m_current_char != stop_char && m_current_char != '\n' && !is_eof()) {
+            if (m_current_char == '\\') {
+                consume();
+            }
             consume();
         }
-        consume();
-        token_type = TokenType::StringLiteral;
+        if (m_current_char != stop_char) {
+            syntax_error("unterminated string literal");
+            token_type = TokenType::UnterminatedStringLiteral;
+        } else {
+            consume();
+            token_type = TokenType::StringLiteral;
+        }
     } else if (m_current_char == EOF) {
         token_type = TokenType::Eof;
     } else {
+        // There is only one four-char operator: >>>=
+        bool found_four_char_token = false;
+        if (m_position + 2 < m_source.length()) {
+            if (m_current_char == '>'
+                && m_source[m_position] == '>'
+                && m_source[m_position + 1] == '>'
+                && m_source[m_position + 2] == '=') {
+
+                found_four_char_token = true;
+                consume();
+                consume();
+                consume();
+                consume();
+                token_type = TokenType::UnsignedShiftRightEquals;
+            }
+        }
+
         bool found_three_char_token = false;
-        if (m_position + 1 < m_source.length()) {
+        if (!found_four_char_token && m_position + 1 < m_source.length()) {
             char second_char = m_source[m_position];
             char third_char = m_source[m_position + 1];
             char three_chars[] { (char)m_current_char, second_char, third_char, 0 };
@@ -228,7 +276,7 @@ Token Lexer::next()
         }
 
         bool found_two_char_token = false;
-        if (!found_three_char_token && !is_eof()) {
+        if (!found_four_char_token && !found_three_char_token && m_position < m_source.length()) {
             char second_char = m_source[m_position];
             char two_chars[] { (char)m_current_char, second_char, 0 };
             auto it = s_two_char_tokens.find(two_chars);
@@ -241,7 +289,7 @@ Token Lexer::next()
         }
 
         bool found_one_char_token = false;
-        if (!found_three_char_token && !found_two_char_token) {
+        if (!found_four_char_token && !found_three_char_token && !found_two_char_token) {
             auto it = s_single_char_tokens.find(m_current_char);
             if (it != s_single_char_tokens.end()) {
                 found_one_char_token = true;
@@ -250,7 +298,7 @@ Token Lexer::next()
             }
         }
 
-        if (!found_three_char_token && !found_two_char_token && !found_one_char_token) {
+        if (!found_four_char_token && !found_three_char_token && !found_two_char_token && !found_one_char_token) {
             consume();
             token_type = TokenType::Invalid;
         }
