@@ -597,15 +597,26 @@ int main(int argc, char** argv)
                 target_node.full_path(directory_view.model()).characters(),
                 FileSystemPath(url_to_copy.path()).basename().characters());
             // Test replace copy_file_or_directory with move_file_or_directory
-            //if (!FileUtils::copy_file_or_directory(url_to_copy.path(), new_path)) {
-            if (!FileUtils::move_file_or_directory(url_to_copy.path(), new_path)) {
-                auto error_message = String::format("Could not move %s into %s.",
-                    url_to_copy.to_string().characters(),
-                    new_path.characters());
-                GUI::MessageBox::show(error_message, "File Manager", GUI::MessageBox::Type::Error);
-            } else {
-                refresh_tree_view();
+            // Change default_copy_on_drag to true to change behavior.
+            // FIXME: Add keyevent to check for modifier Ctrl key to toggle copy on move or move files
+            bool default_copy_on_drag = false;
+            if(default_copy_on_drag){
+                if (!FileUtils::copy_file_or_directory(url_to_copy.path(), new_path)) {
+                    auto error_message = String::format("Could not copy %s into %s.",
+                        url_to_copy.to_string().characters(),
+                        new_path.characters());
+                    GUI::MessageBox::show(error_message, "File Manager", GUI::MessageBox::Type::Error);
+                }
+            }else{
+                if (!FileUtils::move_file_or_directory(url_to_copy.path(), new_path)) {
+                    auto error_message = String::format("Could not move %s into %s.",
+                        url_to_copy.to_string().characters(),
+                        new_path.characters());
+                    GUI::MessageBox::show(error_message, "File Manager", GUI::MessageBox::Type::Error);
+                }
             }
+            refresh_tree_view();
+
         }
     };
 
