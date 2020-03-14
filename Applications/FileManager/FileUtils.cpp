@@ -40,7 +40,7 @@ int delete_file(String path){
     if(unlink(path.characters()) < 0){
         return errno;
     }
-    dbgprintf("FileUtils: unlink(%s) succeeded\r\n", path.characters());
+    dbg() << "FileUtils: unlink(%s" << path << ") succeeded\r\n";
     return 0;
 }
 
@@ -84,30 +84,31 @@ bool move_file_or_directory(const String& src_path, const String& dst_path){
     struct stat st;
 
     if (lstat(src_path.characters(), &st)) {
-        dbgprintf("FileUtils: move_file_or_directory-> lstat(%s) failed!\r\n", src_path);
+        dbg() << "FileUtils: move_file_or_directory-> lstat(" << src_path << ") failed!\r\n";
         return false;
     }
 
 
 
     if(!copy_file_or_directory(src_path,dst_path)){
-        dbgprintf("FileUtils: move_file_or_directory-> copy_file_or_directory(%s,%s) failed!\r\n", src_path,dst_path);
+        dbg() << "FileUtils: move_file_or_directory-> copy_file_or_directory(" << src_path << "," << dst_path < ") failed!\r\n";
         return false;
     }
     if(S_ISDIR(st.st_mode)){
         String error_path;
         if(delete_directory(src_path,error_path)  < 0){
-            dbgprintf("FileUtils: move_file_or_directory-> delete_directory(%s) failed!\r\n", src_path);
-            dbgprintf("Culprit: %s\r\n", error_path);
+            dbg() << "FileUtils: move_file_or_directory-> delete_directory(" << src_path << ") succeeded!\r\n";
+            dbg() << "Culprit: " << src_path << "\r\n";
             return false;
         }
-        dbgprintf("FileUtils: move_file_or_directory-> delete_directory(%s) succeeded!\r\n", src_path);
+        dbg() << "FileUtils: move_file_or_directory-> delete_directory(" << src_path << ") succeeded!\r\n";
         return true;
-    }else if (FileUtils::delete_file(src_path.characters()) < 0) {
-        dbgprintf("FileUtils: move_file_or_directory-> delete_file(%s) failed!\r\n", src_path);
+    }
+    if (FileUtils::delete_file(src_path.characters()) < 0) {
+        dbg() << "FileUtils: move_file_or_directory-> delete_file(" << src_path << ") failed!\r\n";
         return false;
     }
-    dbgprintf("FileUtils: move_file_or_directory-> delete_file(%s) succeeded!\r\n", src_path);
+    dbg() << "FileUtils: move_file_or_directory-> delete_file(" << src_path << ") succeeded!\r\n";
     return true;
 }
 bool copy_file_or_directory(const String& src_path, const String& dst_path)
