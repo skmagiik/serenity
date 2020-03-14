@@ -603,6 +603,10 @@ int main(int argc, char** argv)
                 GUI::MessageBox::show(error_message, "File Manager", GUI::MessageBox::Type::Error);
             }
             refresh_tree_view();
+<<<<<<< HEAD
+=======
+
+>>>>>>> skmagiik-serenity/FileManagerInteractions
         }
     };
 

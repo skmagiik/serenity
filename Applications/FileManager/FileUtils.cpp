@@ -35,6 +35,7 @@
 
 namespace FileUtils {
 
+<<<<<<< HEAD
 int delete_file(String path)
 {
 
@@ -42,6 +43,14 @@ int delete_file(String path)
         return errno;
     }
     dbg() << "FileUtils: unlink(%s" << path << ") succeeded";
+=======
+int delete_file(String path){
+
+    if(unlink(path.characters()) < 0){
+        return errno;
+    }
+    dbg() << "FileUtils: unlink(%s" << path << ") succeeded\r\n";
+>>>>>>> skmagiik-serenity/FileManagerInteractions
     return 0;
 }
 
@@ -80,12 +89,17 @@ int delete_directory(String directory, String& file_that_caused_error)
 
     return 0;
 }
+<<<<<<< HEAD
 bool move_file_or_directory(const String& src_path, const String& dst_path)
 {
+=======
+bool move_file_or_directory(const String& src_path, const String& dst_path){
+>>>>>>> skmagiik-serenity/FileManagerInteractions
     // stat the lcoation so we can detect if this is a directory or a file
     struct stat st;
 
     if (lstat(src_path.characters(), &st)) {
+<<<<<<< HEAD
         dbg() << "FileUtils: move_file_or_directory-> lstat(" << src_path << ") failed!";
         return false;
     }
@@ -109,6 +123,33 @@ bool move_file_or_directory(const String& src_path, const String& dst_path)
         return false;
     }
     dbg() << "FileUtils: move_file_or_directory-> delete_file(" << src_path << ") succeeded!";
+=======
+        dbg() << "FileUtils: move_file_or_directory-> lstat(" << src_path << ") failed!\r\n";
+        return false;
+    }
+
+
+
+    if(!copy_file_or_directory(src_path,dst_path)){
+        dbg() << "FileUtils: move_file_or_directory-> copy_file_or_directory(" << src_path << "," << dst_path < ") failed!\r\n";
+        return false;
+    }
+    if(S_ISDIR(st.st_mode)){
+        String error_path;
+        if(delete_directory(src_path,error_path)  < 0){
+            dbg() << "FileUtils: move_file_or_directory-> delete_directory(" << src_path << ") succeeded!\r\n";
+            dbg() << "Culprit: " << src_path << "\r\n";
+            return false;
+        }
+        dbg() << "FileUtils: move_file_or_directory-> delete_directory(" << src_path << ") succeeded!\r\n";
+        return true;
+    }
+    if (FileUtils::delete_file(src_path.characters()) < 0) {
+        dbg() << "FileUtils: move_file_or_directory-> delete_file(" << src_path << ") failed!\r\n";
+        return false;
+    }
+    dbg() << "FileUtils: move_file_or_directory-> delete_file(" << src_path << ") succeeded!\r\n";
+>>>>>>> skmagiik-serenity/FileManagerInteractions
     return true;
 }
 bool copy_file_or_directory(const String& src_path, const String& dst_path)
